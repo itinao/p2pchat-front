@@ -1,0 +1,42 @@
+<script src="sample.js"></script>
+
+<template id="x-sample">
+  <link rel="stylesheet" href="sample.css">
+  <style>
+  </style>
+  <section class="x-sample">
+    test
+  </section>
+</template>
+
+<script>
+(function() {
+  var currentScript = document._currentScript || document.currentScript;
+  var doc = currentScript.ownerDocument;
+  
+  var prototype = Object.create(HTMLElement.prototype, {
+    createdCallback: {
+      value: function() {
+        console.log("createdCallback");
+      }
+    },
+    attachedCallback: {
+      value: function() {
+        console.log("attachedCallback");
+      }
+    },
+    detachedCallback: {
+      value: function() {
+        console.log("detachedCallback");
+      }
+    },
+    attributeChangedCallback: {
+      value: function() {
+        console.log("attributeChangedCallback");
+      }
+    }
+  });
+
+  document.registerElement('x-sample', {prototype: prototype});
+})();
+</script>

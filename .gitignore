@@ -1,2 +1,3 @@
 node_modules
 webroot/css/*.css
+webroot/css/scss/.sass-cache
