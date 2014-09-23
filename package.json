@@ -1,0 +1,30 @@
+{
+  "name": "p2pchat-front",
+  "version": "0.0.0",
+  "description": "p2pchat-front =============",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itinao/p2pchat-front.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/itinao/p2pchat-front/issues"
+  },
+  "homepage": "https://github.com/itinao/p2pchat-front",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-bower-task": "^0.4.0",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-concat": "^0.5.0",
+    "grunt-contrib-cssmin": "^0.10.0",
+    "grunt-contrib-htmlmin": "^0.3.0",
+    "grunt-contrib-uglify": "^0.6.0",
+    "grunt-image": "^0.8.4",
+    "grunt-uncss": "^0.3.6"
+  }
+}
