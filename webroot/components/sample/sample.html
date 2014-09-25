@@ -13,11 +13,15 @@
 (function() {
   var currentScript = document._currentScript || document.currentScript;
   var doc = currentScript.ownerDocument;
-  
+
   var prototype = Object.create(HTMLElement.prototype, {
     createdCallback: {
       value: function() {
         console.log("createdCallback");
+
+        var t = doc.querySelector('#x-sample');
+        var clone = doc.importNode(t.content, true);
+        this.createShadowRoot().appendChild(clone);
       }
     },
     attachedCallback: {
