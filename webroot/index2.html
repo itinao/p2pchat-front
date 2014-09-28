@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+</head>
+<body>
+
+
+<div id="ziko-sho-kai">ぼくのなまえはテスト太郎</div> 
+<div>こっちにもレイアウトがあたる</div> 
+
+
+<style type="text/css">
+  div {
+    width: 300px;
+    height: 100px;
+    line-height: 100px;
+    text-align: center;
+    border: 5px dashed #f0f;
+    margin: 5px;
+  }
+</style>
+
+<template id="t-ziko-sho-kai">
+  <div>
+    test
+    <content></content>
+    test
+  </div>
+</template>
+
+<!--  select はホストノードの直下にある要素しか選択することができません。言い換えると、2 番目以降の子孫 (例 select="table tr") を選択することはできません
+<template id="t-ziko-sho-kai">
+  <div>
+    test
+    <content select=".hoge"></content>
+    test
+  </div>
+</template>
+-->
+
+<script type="text/javascript">
+var shadow = document.querySelector('#ziko-sho-kai').createShadowRoot();
+var template = document.querySelector('#t-ziko-sho-kai');
+var templateClone = document.importNode(template.content, true)
+shadow.appendChild(templateClone);
+</script>
+
+
+</body>
+</html>

@@ -17,6 +17,11 @@ html, body {width: 100%; height: 100%;}
 <link rel="import" href="vendors/polymer/paper-ripple/paper-ripple.html">
 <link rel="import" href="vendors/polymer/core-icons/core-icons.html">
 <link rel="import" href="vendors/polymer/core-icon/core-icon.html">
+<link rel="import" href="vendors/polymer/paper-button/paper-button.html">
+<link rel="import" href="vendors/polymer/core-item/core-item.html">
+
+<link rel="import" href="vendors/polymer/core-transition/core-transition-css.html">
+<link rel="import" href="vendors/polymer/core-overlay/core-overlay.html">
 <style type="text/css">
 core-header-panel {
   width: 100%;
@@ -34,9 +39,6 @@ core-header-panel {
   position: absolute;
   width: 100%;
   height: 100%;
-  /*
-  background: linear-gradient(rgb(214, 227, 231), lightblue);
-  */
 }
 
 [drawer] {
@@ -48,45 +50,24 @@ core-header-panel {
   background-color: #4F7DC9;
 }
 
-.fab {
-  position: relative;
-  display: inline-block;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  color: #fff;
-  overflow: hidden;
-  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  transition-delay: 0.2s;
-  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);
-}
-.fab.green {
-  background-color: #4FC971;
-}
-.fab:active {
-  box-shadow: 0 8px 17px 0 rgba(0, 0, 0, 0.2);
-  transition-delay: 0s;
-}
-.fab > core-icon {
-  margin: 16px;
-}
-.fab > core-icon::shadow path {
-  fill: #fff;
+
+core-item {
+  padding: 10px;
+  margin: 0px 2px;
 }
 
-.chat-create {
-  position: relative;
-  top: 20px;
+core-item.contact-item {
+  height: 50px;
+  background-color: #efefef;
+  border: 1px solid #ddd;
 }
-.chat-create-text {
-  position: absolute;
-  color: #fff;
-  top: 14px;
-  left: 8px;
-  font-size: 18px;
+
+core-item.contact-item .name {
+  font-size: 1.125em;
 }
-.chat-create-button {
-  left: 180px;
+
+core-item.contact-item .address {
+  font-size: 0.75em;
 }
 </style>
 
@@ -94,17 +75,171 @@ core-header-panel {
   <div class="core-header">P2P Chat</div>
   <core-drawer-panel class="core-contents">
     <div drawer>
-      <div class="chat-create">
-        <div class="chat-create-text">チャットルーム作成</div>
-        <div class="fab green chat-create-button">
-          <core-icon icon="add"></core-icon>
-          <paper-ripple class="circle recenteringTouch" fit></paper-ripple>
+<new-connect></new-connect>
+      <core-item icon="account-circle" class="contact-item">
+        <div flex>
+          <div class="name">John Doe</div>
+          <div class="address">123 A Street, San Francisco, CA</div>
         </div>
-      </div>
+        <core-icon icon="more-vert"></core-icon>
+      </core-item>
+
+      <core-item icon="account-circle" class="contact-item">
+        <div flex>
+          <div class="name">John Doe</div>
+          <div class="address">123 A Street, San Francisco, CA</div>
+        </div>
+        <core-icon icon="more-vert"></core-icon>
+      </core-item>
+
+      <core-item icon="account-circle" class="contact-item">
+        <div flex>
+          <div class="name">John Doe</div>
+          <div class="address">123 A Street, San Francisco, CA</div>
+        </div>
+        <core-icon icon="more-vert"></core-icon>
+      </core-item>
+
     </div>
     <div main></div>
   </core-drawer-panel>
 </core-header-panel>
+
+
+
+<!-- a simple dialog element made with core-overlay -->
+<polymer-element name="x-dialog" attributes="opened autoCloseDisabled">
+  <template>
+    <style>
+      :host {
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        overflow: hidden;
+        background: white;
+        padding:30px 42px;
+        outline: 1px solid rgba(0,0,0,0.2);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      }
+    </style>
+    <core-overlay id="overlay" layered backdrop opened="{{opened}}" autoCloseDisabled="{{autoCloseDisabled}}"  transition="core-transition-center"></core-overlay>
+    <content></content>
+  </template>
+  <script>
+  Polymer('x-dialog', {
+    ready: function() {
+      this.$.overlay.target = this;
+    },
+    toggle: function() {
+      this.$.overlay.toggle();
+    }
+  });
+  </script>
+</polymer-element>
+
+
+
+<!-- an element that uses the x-dialog element and core-overlay -->
+<polymer-element name="new-connect">
+	<template>
+		<x-dialog id="dialog" class="dialog">
+			<!-- place all overlay styles inside the overlay target -->
+			<style no-shim>
+				.dialog {
+					box-sizing: border-box;
+					-moz-box-sizing: border-box;
+					font-family: Arial, Helvetica, sans-serif;
+					font-size: 13px;
+					-webkit-user-select: none;
+					-moz-user-select: none;
+					overflow: hidden;
+					background: white;
+					padding:30px 42px;
+					outline: 1px solid rgba(0,0,0,0.2);
+					box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+				}
+				#dialog {
+					width: 500px;
+				}
+
+
+        paper-button {
+          margin: 28px;
+          width: 200px;
+          font-family: RobotoDraft, 'Helvetica Neue', Helvetica, Arial;
+        }
+        paper-button.colored {
+          color: #4285f4;
+          fill: #4285f4;
+        }
+        paper-button[raisedButton].colored {
+          background: #4285f4;
+          color: #fff;
+        }
+        paper-button[raisedButton].colored #ripple,
+        paper-button[raisedButton].colored::shadow #ripple {
+          color: #2a56c6;
+        }
+        paper-button[raisedButton].colored #focusBg,
+        paper-button[raisedButton].colored::shadow #focusBg {
+          background: #3367d6;
+        }
+			</style>
+			<h2>Dialog</h2>
+			<div>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed fringilla sapien sed enim sollicitudin laoreet. Suspendisse suscipit, metus ac volutpat sodales, libero magna semper lacus, molestie fringilla massa orci ut arcu. Nullam sodales urna sit amet odio vehicula mattis.</div><br><br>
+			<div>Ut aliquam vulputate congue. Vestibulum pretium pretium nulla quis sollicitudin. Praesent lacinia congue erat nec mattis. Fusce commodo lacus est. Duis turpis eros, ultrices sed aliquet non, blandit egestas velit. Integer a augue nec lorem tristique hendrerit. Curabitur imperdiet risus id enim bibendum vestibulum. Integer id magna at arcu faucibus fermentum vel a augue. Sed fringilla venenatis dolor, in blandit magna molestie luctus. Vestibulum dignissim posuere ultrices. Aenean urna nisl, tincidunt vitae iaculis ut, pharetra nec eros.</div><br><br>
+			<div>
+				<input placeholder="say something..." autofocus on-input="{{inputHandler}}" /><br>
+				I agree with this wholeheartedly.
+
+				<core-overlay layered id="confirmation" class="dialog" backdrop transition="core-transition-top">
+					<!-- place all overlay styles inside the overlay target -->
+					<style no-shim>
+						.dialog {
+							box-sizing: border-box;
+							-moz-box-sizing: border-box;
+							font-family: Arial, Helvetica, sans-serif;
+							font-size: 13px;
+							-webkit-user-select: none;
+							-moz-user-select: none;
+							overflow: hidden;
+							background: white;
+							padding:30px 42px;
+							outline: 1px solid rgba(0,0,0,0.2);
+							box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+						}
+						#confirmation {
+							box-sizing: border-box;
+							text-align: center;
+							width: 150px;
+						}
+					</style>
+					Thank you.
+				</core-overlay>
+
+			</div><br><br>
+			<button core-overlay-toggle>OK</button>
+    </x-dialog>
+
+    <paper-button raisedButton on-tap="{{tapHandler}}" label="チャットルーム作成"></paper-button>
+  </template>
+  <script>
+	Polymer('new-connect', {
+    inputHandler: function(e) {
+      if (e.target.value === 'something') {
+        this.$.confirmation.toggle();
+      }
+    },
+    tapHandler: function() {
+      this.$.dialog.toggle();
+    }
+  });
+  </script>
+</polymer-element>
+
 
 
 </body>
