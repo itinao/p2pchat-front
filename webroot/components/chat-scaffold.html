@@ -1,0 +1,234 @@
+<!--
+`chat-scaffold`
+
+Exampler:
+    <chat-scaffold label="HTML Input Elements">
+      <core-item label="String" url="demos/string.html"></core-item>
+      <core-item label="Checkbox" url="demos/checkbox.html"></core-item>
+      <core-item label="Radio" url="demos/radio.html"></core-item>
+      <core-item label="Range" url="demos/range.html"></core-item>
+      <core-item label="Color" url="demos/color.html"></core-item>
+    </chat-scaffold>
+-->
+
+
+<link rel="import" href="../vendors/polymer/core-toolbar/core-toolbar.html">
+<link rel="import" href="../vendors/polymer/core-drawer-panel/core-drawer-panel.html">
+<link rel="import" href="../vendors/polymer/core-header-panel/core-header-panel.html">
+<link rel="import" href="../vendors/polymer/core-item/core-item.html">
+<link rel="import" href="../vendors/polymer/core-menu/core-menu.html">
+<link rel="import" href="../vendors/polymer/core-menu/core-submenu.html">
+<link rel="import" href="../vendors/polymer/core-icon-button/core-icon-button.html">
+<link rel="import" href="../vendors/polymer/core-list/core-list.html">
+<link rel="import" href="../vendors/polymer/paper-fab/paper-fab.html">
+<link rel="import" href="../vendors/polymer/paper-input/paper-input.html">
+<link rel="import" href="../vendors/polymer/paper-button/paper-button.html">
+<link rel="import" href="../vendors/polymer/paper-toast/paper-toast.html">
+
+<polymer-element name="chat-scaffold" attributes="label">
+<template>
+  <link rel="stylesheet" href="chat-scaffold.css">
+
+  <core-drawer-panel id="drawerPanel">
+
+    <core-header-panel id="mainHeaderPanel" main mode="cover" shadow>
+
+      <core-toolbar class="medium-tall"></core-toolbar>
+      
+      <div id="card" on-transitionend="{{cardTransitionDone}}">
+        <div id="chat" hidden?="{{containerType !== containerTypes.chat}}">
+          <div class="element-label">{{item.label}}</div>
+          <div class="chat-area">
+            <div class="non-chat-message" layout flex vertical center center-justified hidden?="{{chatRoomLogs[selectedChatRoom].length}}">メッセージがありません。</div>
+            <core-list id="list" data="{{chatRoomLogs[selectedChatRoom]}}" hidden?="{{!chatRoomLogs[selectedChatRoom].length}}" height="1">
+              <template>
+                <div class="item {{ {selected: selected} | tokenList }}">
+                  <div class="message" style="">
+                    <span class="from">{{name}}</span>
+                    <span class="timestamp">{{time}}</span>
+                    <div class="body">{{message}}</div>
+                  </div>
+                </div>
+              </template>
+            </core-list>
+          </div>
+          <div class="chat-input-area" horizontal layout>
+            <paper-input id="chatMessage" floatingLabel multiline label="ここにメッセージ内容を入力" layout vertical></paper-input>
+            <paper-fab on-tap="{{sendChat}}" class="send" icon="send" role="button" aria-label="send"></paper-fab>
+            <paper-fab on-tap="" class="file-upload" icon="file-upload" role="button" aria-label="file-upload"></paper-fab>
+          </div>
+        </div>
+        <div id="about" hidden?="{{containerType !== containerTypes.about}}">
+          <div class="element-label">ようこそ！</div>
+          <div>
+            ここに説明。
+          </div>
+        </div>
+        <div id="search" hidden?="{{containerType !== containerTypes.search}}">
+          <div class="element-label">検索する</div>
+          <div>
+            ここに検索条件。
+          </div>
+        </div>
+        <div id="settings" hidden?="{{containerType !== containerTypes.settings}}">
+          <div class="element-label">設定する</div>
+          <div>
+            ここに設定内容。
+          </div>
+        </div>
+        <div id="add" hidden?="{{containerType !== containerTypes.add}}">
+          <div class="element-label">チャットルームを作る</div>
+          <div class="settings-area" flex vertical layout center center-justified>
+            <paper-input id="chatRoomName" floatingLabel label="チャットルーム名を入力"></paper-input>
+            <paper-button raisedButton on-tap="{{createChatRoom}}" label="作成"></paper-button>
+          </div>
+          <paper-toast relative id="toast" class="capsule" text="不正なチャットルーム名です"></paper-toast>
+        </div>
+      </div>
+      
+    </core-header-panel>
+
+    <core-header-panel drawer>
+
+      <core-toolbar class="medium-tall">
+        <div class="bottom main-label fit">{{label}}</div>
+      </core-toolbar>
+
+      <section flex horizontal layout center-justified>
+        <paper-fab on-tap="{{menuSelect}}" container-type="search" class="search" icon="search" role="button" aria-label="search"></paper-fab>
+        <paper-fab on-tap="{{menuSelect}}" container-type="settings" class="settings" icon="settings" role="button" aria-label="settings"></paper-fab>
+        <paper-fab on-tap="{{menuSelect}}" container-type="add" class="add" icon="add" role="button" aria-label="add"></paper-fab>
+      </section>
+
+      <core-menu id="room" on-core-select="{{roomSelect}}">
+        <template repeat="{{chatRoom in chatRooms}}">
+          <core-item label="{{chatRoom.name}}" tag="{{chatRoom.tag}}"></core-item>
+        </template>
+      </core-menu>
+
+    </core-header-panel>
+
+  </core-drawer-panel>
+</template>
+<script>
+  Polymer('chat-scaffold', {
+    user: {
+      id: "",
+      name: "testユーザー",
+    },
+    defaultContainerType: 'about',
+    containerType: null,
+    containerTypes: {
+      chat:     'chat',
+      about:    'about',
+      search:   'search',
+      settings: 'settings',
+      add:      'add'
+    },
+    chatRooms: [],
+    chatRoomLogs: {},
+    selectedChatRoom: null,
+
+    ready: function() {
+    },
+    
+    domReady: function() {
+      this.async(function() {
+        this.containerType = this.defaultContainerType;
+        this.animateCard();
+      }, null, 300);
+    },
+    
+    roomSelect: function(e, detail) {
+      if (detail.isSelected) {
+        this.item = detail.item;
+        if (this.item.children.length) {
+          this.item.selected = 0;
+        }
+        this.item.tag = this.item.getAttribute('tag');
+        this.selectedChatRoom = this.item.tag;
+        var tag = this.selectedChatRoom;
+        if (!this.chatRoomLogs[tag]) {
+          this.chatRoomLogs[tag] = [];
+        }
+        this.$.chatMessage.value = "";// 入力状態を初期化
+        this.containerType = this.containerTypes.chat;
+        this.animateCard();
+      }
+    },
+
+    menuSelect: function(e, i, item) {
+      this.item = item;
+      this.containerType = this.item.getAttribute('container-type');
+      this.$.room.selected = null;// 選択状態初期化
+      this.animateCard();
+    },
+    
+    animateCard: function() {
+      this.$.card.classList.remove('move-up');
+      this.$.card.style.display = 'none';
+      this.async(function() {
+        this.$.card.style.display = 'block';
+        this.moveCard(this.$.mainHeaderPanel.offsetHeight);
+        this.async(function() {
+          this.$.card.classList.add('move-up');
+          this.moveCard(null);
+        }, null, 300);
+      });
+    },
+    
+    moveCard: function(y) {
+      var s = this.$.card.style;
+      s.webkitTransform = s.transform = y ? 'translate3d(0, ' + y + 'px,0)' : '';
+    },
+    
+    cardTransitionDone: function() {
+      if (this.$.card.classList.contains('move-up')) {
+        this.$.card.classList.remove('move-up');
+      }
+    },
+
+    createChatRoom: function() {
+      var chatRoomName = this.$.chatRoomName.value;
+      if (!chatRoomName) {
+        this.$.toast.show();
+        return;
+      }
+      var chatRoom = {
+        name: chatRoomName,
+        tag: chatRoomName,
+      };
+      this.chatRooms.push(chatRoom);
+      this.$.room.selected = this.chatRooms.length - 1;// 選択状態にする
+      this.$.chatRoomName.value = "";// 入力状態を初期化
+    },
+
+    sendChat: function(e, i, item) {
+      var message = this.$.chatMessage.value;
+//      message = message.replace(/\r\n/g, "&lt;br /&gt;<br />");
+//      message = message.replace(/(\n|\r)/g, "&lt;br /&gt;<br />");
+      var chatLog = {
+        name: this.user.name,
+        message: message,
+        time: this.getNow()
+      };
+      var tag = this.selectedChatRoom;
+      this.chatRoomLogs[tag].push(chatLog);
+//      this.$.list.scrollToItem(this.$.list.childElementCount + 1);// 最新の投稿位置へスクロールする
+      this.$.chatMessage.value = "";// 入力状態を初期化
+    },
+    getNow: function() {
+      var nowymdhms　=　new Date();
+      var nowYear = nowymdhms.getYear();
+      var nowMon = nowymdhms.getMonth() + 1;
+      var nowDay = nowymdhms.getDate();
+      var nowWeek = nowymdhms.getDay();
+      var nowHour = nowymdhms.getHours();
+      var nowMin = nowymdhms.getMinutes();
+      var nowSec = nowymdhms.getSeconds();
+      var week = new Array("日","月","火","水","木","金","土");
+      return nowYear+"年"+nowMon+"月"+nowDay+"日("+week[nowWeek]+")"+nowHour+"時"+nowMin+"分"+nowSec+"秒";
+    }
+  });
+</script>
+</polymer-element>
