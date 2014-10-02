@@ -9,8 +9,18 @@ Exampler:
       <core-item label="Range" url="demos/range.html"></core-item>
       <core-item label="Color" url="demos/color.html"></core-item>
     </chat-scaffold>
+
+
+TODO: 
+  チャット入力した文字の改行
+  チャットエリアの伸縮
+  core-list id="list"の要素に対して、height="1"をあてているので、直す
+    -> core-listにheightを指定しないと高さ80px固定になってしまい下部にスペースができてしまう問題
+  上記修正後、チャットの発言後に発言した分、スクロールさせる対応
+
 -->
 
+<script type="text/javascript" src="../vendors/peerjs/peer.js"></script>
 
 <link rel="import" href="../vendors/polymer/core-toolbar/core-toolbar.html">
 <link rel="import" href="../vendors/polymer/core-drawer-panel/core-drawer-panel.html">
@@ -41,12 +51,15 @@ Exampler:
           <div class="chat-area">
             <div class="non-chat-message" layout flex vertical center center-justified hidden?="{{chatRoomLogs[selectedChatRoom].length}}">メッセージがありません。</div>
             <core-list id="list" data="{{chatRoomLogs[selectedChatRoom]}}" hidden?="{{!chatRoomLogs[selectedChatRoom].length}}" height="1">
+              <style type="text/css">
+                .body {font-size: 16px; line-height: 100%;}
+              </style>
               <template>
                 <div class="item {{ {selected: selected} | tokenList }}">
                   <div class="message" style="">
                     <span class="from">{{name}}</span>
                     <span class="timestamp">{{time}}</span>
-                    <div class="body">{{message}}</div>
+                    <pre class="body">{{message}}</pre>
                   </div>
                 </div>
               </template>
@@ -60,9 +73,12 @@ Exampler:
         </div>
         <div id="about" hidden?="{{containerType !== containerTypes.about}}">
           <div class="element-label">ようこそ！</div>
-          <div>
-            ここに説明。
+          <div class="settings-area" flex vertical layout center center-justified>
+            <paper-input id="userName" floatingLabel label="ユーザー名を入力" value="{{user.name}}"></paper-input>
+            <paper-button raisedButton on-tap="{{settingUserInfo}}" label="設定"></paper-button>
           </div>
+          <paper-toast relative id="alertUserInfo" class="capsule" text="不正なユーザー名です"></paper-toast>
+          <paper-toast relative id="toastUserInfo" class="capsule" text="設定が完了しました"></paper-toast>
         </div>
         <div id="search" hidden?="{{containerType !== containerTypes.search}}">
           <div class="element-label">検索する</div>
@@ -72,9 +88,12 @@ Exampler:
         </div>
         <div id="settings" hidden?="{{containerType !== containerTypes.settings}}">
           <div class="element-label">設定する</div>
-          <div>
-            ここに設定内容。
+          <div class="settings-area" flex vertical layout center center-justified>
+            <paper-input id="userName" floatingLabel label="ユーザー名を入力" value="{{user.name}}"></paper-input>
+            <paper-button raisedButton on-tap="{{settingUserInfo}}" label="設定"></paper-button>
           </div>
+          <paper-toast relative id="alertUserInfo" class="capsule" text="不正なユーザー名です"></paper-toast>
+          <paper-toast relative id="toastUserInfo" class="capsule" text="設定が完了しました"></paper-toast>
         </div>
         <div id="add" hidden?="{{containerType !== containerTypes.add}}">
           <div class="element-label">チャットルームを作る</div>
@@ -82,7 +101,7 @@ Exampler:
             <paper-input id="chatRoomName" floatingLabel label="チャットルーム名を入力"></paper-input>
             <paper-button raisedButton on-tap="{{createChatRoom}}" label="作成"></paper-button>
           </div>
-          <paper-toast relative id="toast" class="capsule" text="不正なチャットルーム名です"></paper-toast>
+          <paper-toast relative id="alertChatRoom" class="capsule" text="不正なチャットルーム名です"></paper-toast>
         </div>
       </div>
       
@@ -114,8 +133,22 @@ Exampler:
   Polymer('chat-scaffold', {
     user: {
       id: "",
-      name: "testユーザー",
+      name: "",
     },
+
+    p2pConfig: {
+      host: 'localhost',
+      port: 9000,
+      path: '/myapp',
+      debug: 2,
+      sendContentType: {
+        chatMessage: 'chatMessage',
+        file: 'file'
+      },
+    },
+    peer: null,// 自身のPeer
+    dataConnections: {},// 接続中のPeer
+
     defaultContainerType: 'about',
     containerType: null,
     containerTypes: {
@@ -130,7 +163,101 @@ Exampler:
     selectedChatRoom: null,
 
     ready: function() {
+      this.peer = new Peer({host: this.p2pConfig.host, port: this.p2pConfig.port, path: this.p2pConfig.path, debug: this.p2pConfig.debug});
+
+      // 開始イベントの受信
+      this.peer.on('open', function(id) {
+        console.log("open: " + id);
+        this.user.id = id;
+
+        var settings = sessionStorage.getItem('settings');
+        if (settings) {
+          var _settings = JSON.parse(settings);
+          this.user.name = _settings.user.name;
+        } else {
+          this.user.name = 'ユーザー ' + this.user.id;
+        }
+      }.bind(this));
+
+      // エラーイベントの受信
+      this.peer.on('error', function(err) {
+        console.log("err!!");
+        console.log(err);
+      }.bind(this));
+
+      // 接続イベントの受信
+      this.peer.on('connection', function(connection) {
+        console.log("connection: " + connection.peer);
+        connection = this.addConnectionEvents(connection);
+        this.dataConnections[connection.peer] = connection;
+      }.bind(this));
     },
+
+
+// コネクション確立時にコールバックを設定する
+addConnectionEvents: function(connection) {
+
+  // 接続成功処理
+  connection.on('open', function() {
+    console.log('open: ' + connection.peer);
+    //TODO:  これを使ってgrowlなどで接続を通知するとよさそう
+    //console.log(connection.metadata.message);
+//    this.connectionList.push(connection.peer);
+  }.bind(this));
+
+  // データ受信時の処理
+  connection.on('data', function(data) {
+    if (data.sendContentType === this.sendContentType.chatMessage) {
+      console.log('data: ' + data.chatMessage);
+      this.chat.push({sendConnectionId: connection.peer, value: data.chatMessage});
+      var message = new SpeechSynthesisUtterance();
+      message.volume = 1;// ボリューム。0以上1以下の範囲で指定し、1が最大
+      message.rate = 1;// 発話速度を指定。3は3倍の速さで、0.5は半分の速さです。0.1未満、10以上はダメ
+      message.pitch = 2;// 話に対するピッチを指定。０〜２で指定できる
+      message.lang = "ja-JP";// 音声合成の言語を指定
+      message.text = data.chatMessage;// 喋る文字。最大長さは32767文字
+      speechSynthesis.speak(message);
+    } else if (data.sendContentType === this.sendContentType.file) {
+      console.log('data: ' + data.fileName);
+      if (data.file.constructor === String) {
+        // noop
+      } else if (data.file.constructor === ArrayBuffer) {
+        var blob = new Blob([data.file], {type: data.fileType});
+        this.downloadBlob(blob, data.fileName);
+      }
+    }
+  }.bind(this));
+
+  // クローズ時の処理
+  connection.on('close', function() {
+    console.log('close: ' + connection.peer);
+//    this.connectionList.remove(connection.peer);
+  }.bind(this));
+
+  return connection;
+},
+
+// 接続処理
+createConnection: function(connectionId) {
+  // 入力なし または 自分のIDを入力した場合にはスルーさせとく
+  if (!connectionId || this.user.id === connectionId) {
+    return;
+  }
+  // TODO: この処理中にmedia connectionのエラーが発生するのを調べる
+  var connection = this.peer.connect(connectionId, {
+    label: 'chat',
+    //serialization: 'none',
+    serialization: 'binary',
+    reliable: true,
+    metadata: {message: 'new connection!!'}
+  });
+  connection = this.addConnectionEvents(connection);
+  this.dataConnections[connectionId] = connection;
+},
+
+
+
+
     
     domReady: function() {
       this.async(function() {
@@ -154,6 +281,7 @@ Exampler:
         this.$.chatMessage.value = "";// 入力状態を初期化
         this.containerType = this.containerTypes.chat;
         this.animateCard();
+//this.createConnection("");
       }
     },
 
@@ -188,10 +316,27 @@ Exampler:
       }
     },
 
+    settingUserInfo: function() {
+      var userName = this.$.userName.value;
+      if (!userName) {
+        this.$.alertUserInfo.show();
+        return;
+      }
+      this.user.name = userName;
+
+      var settings = {
+        user: {
+          name: this.user.name
+        }
+      }
+      sessionStorage.setItem('settings', JSON.stringify(settings));
+      this.$.toastUserInfo.show();
+    },
+
     createChatRoom: function() {
       var chatRoomName = this.$.chatRoomName.value;
       if (!chatRoomName) {
-        this.$.toast.show();
+        this.$.alertChatRoom.show();
         return;
       }
       var chatRoom = {
@@ -205,8 +350,6 @@ Exampler:
 
     sendChat: function(e, i, item) {
       var message = this.$.chatMessage.value;
-//      message = message.replace(/\r\n/g, "&lt;br /&gt;<br />");
-//      message = message.replace(/(\n|\r)/g, "&lt;br /&gt;<br />");
       var chatLog = {
         name: this.user.name,
         message: message,
@@ -214,7 +357,6 @@ Exampler:
       };
       var tag = this.selectedChatRoom;
       this.chatRoomLogs[tag].push(chatLog);
-//      this.$.list.scrollToItem(this.$.list.childElementCount + 1);// 最新の投稿位置へスクロールする
       this.$.chatMessage.value = "";// 入力状態を初期化
     },
     getNow: function() {
@@ -228,7 +370,29 @@ Exampler:
       var nowSec = nowymdhms.getSeconds();
       var week = new Array("日","月","火","水","木","金","土");
       return nowYear+"年"+nowMon+"月"+nowDay+"日("+week[nowWeek]+")"+nowHour+"時"+nowMin+"分"+nowSec+"秒";
+    },
+
+    // TODO: チャット送信後に最新の投稿位置へスクロールする暫定処理(DOM追加後のCallbackにしたい
+    observe: {
+      '$.list.data': 'chatRoomLogsChanged'
+    },
+    chatRoomLogsChanged: function() {
+      setTimeout(function() {
+        this.$.list.scrollTop = this.$.list.scrollHeight;
+      }.bind(this), 10);
     }
   });
 </script>
 </polymer-element>
+
+<script type="text/javascript">
+// Filter definition
+PolymerExpressions.prototype.escape = function (input) {
+  var elm = document.createElement('SPAN');
+  elm.textContent = input;
+  return elm.innerHTML;
+};
+PolymerExpressions.prototype.toHtml = function (input) {
+  return input.replace(/\n/g, '<br>');// TODO: 改行を変換.winの場合おかしくなるかもね？
+};
+</script>

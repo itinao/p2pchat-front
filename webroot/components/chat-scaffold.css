@@ -157,6 +157,25 @@ polyfill-next-selector { content: '#drawerPanel:not([narrow]) .menuButton';}
   min-height: 400px;
 }
 
+/**
+ *
+ */
+#settings paper-button {
+  margin-top: 30px;
+}
+#settings .settings-area {
+  min-height: 400px;
+}
+
+/**
+ *
+ */
+#about paper-button {
+  margin-top: 30px;
+}
+#about .settings-area {
+  min-height: 400px;
+}
 
 /**
  *
