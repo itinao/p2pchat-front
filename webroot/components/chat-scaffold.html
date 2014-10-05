@@ -163,6 +163,17 @@ TODO:
     selectedChatRoom: null,
 
     ready: function() {
+getRooms(function(rooms) {
+  var _chatRooms = [];
+  for (var i = 0, l = rooms.length; i < l; i++) {
+    _chatRooms.push({
+      name: rooms[i],
+      tag: rooms[i]
+    });
+  }
+  this.chatRooms = _chatRooms;
+}.bind(this));
+
       this.peer = new Peer({host: this.p2pConfig.host, port: this.p2pConfig.port, path: this.p2pConfig.path, debug: this.p2pConfig.debug});
 
       // 開始イベントの受信
@@ -207,17 +218,34 @@ addConnectionEvents: function(connection) {
 
   // データ受信時の処理
   connection.on('data', function(data) {
-    if (data.sendContentType === this.sendContentType.chatMessage) {
-      console.log('data: ' + data.chatMessage);
-      this.chat.push({sendConnectionId: connection.peer, value: data.chatMessage});
+    if (data.sendContentType === this.p2pConfig.sendContentType.chatMessage) {
+
+console.log('data: ' + data.chatMessage.message.message);
+var chatLog = {
+  name: data.chatMessage.message.name,
+  message: data.chatMessage.message.message,
+  time: data.chatMessage.message.time
+};
+var tag = data.chatMessage.chatRoom;
+if (!this.chatRoomLogs[tag]) {
+  var chatRoom = {
+    name: tag,
+    tag: tag
+  };
+  this.chatRooms.push(chatRoom);// チャットルームつくる
+  this.chatRoomLogs[tag] = [];
+}
+this.chatRoomLogs[tag].push(chatLog);// チャットルームに発言する
+
+// 喋る
       var message = new SpeechSynthesisUtterance();
       message.volume = 1;// ボリューム。0以上1以下の範囲で指定し、1が最大
       message.rate = 1;// 発話速度を指定。3は3倍の速さで、0.5は半分の速さです。0.1未満、10以上はダメ
       message.pitch = 2;// 話に対するピッチを指定。０〜２で指定できる
       message.lang = "ja-JP";// 音声合成の言語を指定
-      message.text = data.chatMessage;// 喋る文字。最大長さは32767文字
+      message.text = data.chatMessage.message.message;// 喋る文字。最大長さは32767文字
       speechSynthesis.speak(message);
-    } else if (data.sendContentType === this.sendContentType.file) {
+    } else if (data.sendContentType === this.p2pConfig.sendContentType.file) {
       console.log('data: ' + data.fileName);
       if (data.file.constructor === String) {
         // noop
@@ -255,7 +283,34 @@ createConnection: function(connectionId) {
   this.dataConnections[connectionId] = connection;
 },
 
+// 接続中の相手全員にチャット送信
+sendAllChat: function(chatMessage) {
+  if (!chatMessage) {
+    return;
+  }
+  for (var connectionId in this.dataConnections) {
+    this._sendChat(connectionId, chatMessage, true);
+  }
+/*
+  // 自分のチャットに内容を通知する
+  this.chat.push({sendConnectionId: this.myConnectionId, value: chatMessage});
+  this.chatMessage("");
+*/
+},
 
+// 特定の相手にチャット送信
+_sendChat: function(connectionId, chatMessage, disableChatPush) {
+  if (!chatMessage || !connectionId) {
+    return;
+  }
+  this.dataConnections[connectionId].send({sendContentType: this.p2pConfig.sendContentType.chatMessage, chatMessage: chatMessage});
+/*
+  if (!disableChatPush) {// 自分のチャットに内容を通知する
+    this.chat.push({sendConnectionId: this.myConnectionId, value: chatMessage});
+    this.chatMessage("");
+  }
+*/
+},
 
 
     
@@ -281,7 +336,15 @@ createConnection: function(connectionId) {
         this.$.chatMessage.value = "";// 入力状態を初期化
         this.containerType = this.containerTypes.chat;
         this.animateCard();
-//this.createConnection("");
+
+// TODO: XD
+getConnectionIds(function(connections) {
+  connections.forEach(function(connectionId) {
+    if (connectionId !== this.user.id) {
+      this.createConnection(connectionId);
+    }
+  }.bind(this));
+}.bind(this));
       }
     },
 
@@ -344,12 +407,16 @@ createConnection: function(connectionId) {
         tag: chatRoomName,
       };
       this.chatRooms.push(chatRoom);
+createdRoom(chatRoomName);
       this.$.room.selected = this.chatRooms.length - 1;// 選択状態にする
       this.$.chatRoomName.value = "";// 入力状態を初期化
     },
 
     sendChat: function(e, i, item) {
       var message = this.$.chatMessage.value;
+      if (!message) {
+        return;
+      }
       var chatLog = {
         name: this.user.name,
         message: message,
@@ -358,6 +425,10 @@ createConnection: function(connectionId) {
       var tag = this.selectedChatRoom;
       this.chatRoomLogs[tag].push(chatLog);
       this.$.chatMessage.value = "";// 入力状態を初期化
+this.sendAllChat({
+  message: chatLog,
+  chatRoom: this.selectedChatRoom
+});
     },
     getNow: function() {
       var nowymdhms　=　new Date();
@@ -394,5 +465,44 @@ PolymerExpressions.prototype.escape = function (input) {
 };
 PolymerExpressions.prototype.toHtml = function (input) {
   return input.replace(/\n/g, '<br>');// TODO: 改行を変換.winの場合おかしくなるかもね？
+};
+
+
+
+// TODO: ほんとはsocket.ioでやり合いたいけど、PeerJSよくわかんない
+var gets = function(url, param, callback) {
+  if (param) {
+    var query = [];
+    for (var key in param) {
+      var value = param[key];
+      query.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+    }
+    query = query.join('&');
+    url += (query ? '?' + query : '');
+  }
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onload = function(e) {
+    var responseText = xhr.responseText;
+    var responseObject = JSON.parse(responseText);
+    callback && callback(responseObject);
+  };
+  xhr.onerror = function(e) {
+    var responseText = xhr.responseText;
+    var responseObject = JSON.parse(responseText);
+    callback && callback(responseObject);
+  };
+  xhr.send(null);
+  return xhr;
+};
+var getConnectionIds = function(callback) {
+  gets('http://localhost:9000/getConnected', null, callback);
+};
+var getRooms = function(callback) {
+  gets('http://localhost:9000/getRooms', null, callback);
+};
+var createdRoom = function(roomName, callback) {
+  gets('http://localhost:9000/createdRoom', {roomName: roomName}, callback);
 };
 </script>
